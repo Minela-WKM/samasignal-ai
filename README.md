@@ -8,18 +8,14 @@ corrigé et confirmé par le citoyen, puis visible dans un dashboard municipal p
 
 ## État du projet
 
-Ce dépôt contient le **socle technique**, pas encore le MVP métier.
+Le backend fournit une API MVC en français sous `/api/v2/signalements` : analyse IA,
+confirmation citoyenne, liste filtrée et passage au statut traité. Il utilise PostgreSQL,
+des migrations Flyway et des DTO distincts des entités JPA.
+Le frontend conserve sa page d'accueil ; le formulaire, la correction et la carte restent à construire.
+SamaA11y, les recettes fournisseur et la vidéo restent également à livrer.
 
-| Disponible | À développer sur les branches dédiées |
-| --- | --- |
-| Vue 3, Vite, Tailwind et page d'accueil | Formulaire texte/photo, correction, carte Leaflet et dashboard |
-| Spring Boot, JPA, H2/PostgreSQL, healthcheck et Swagger | Entités, migrations, routes de signalement et pipeline IA |
-| Contrat OpenAPI et DTO Java | Intégration Gemma 4 et validation réelle texte + image |
-| Docker Compose et workflow CI | SamaA11y, datasets et vidéo de démonstration |
-
-Les routes `/api/reports` sont **contractuelles et non implémentées** : elles ne retournent
-pas de faux succès. Aucun appel IA n'est effectué par le socle. Le healthcheck mesure
-l'application et sa base, pas l'accès à Gemma.
+Le healthcheck mesure l'application et sa base, pas l'accès à Gemma.
+Voir [le guide de l'API](apps/api/README.md) pour l'architecture et les exemples de requêtes.
 
 ## Démarrage avec Docker
 
@@ -39,7 +35,7 @@ permettent de démarrer sans clé IA et sans copier de fichier de configuration.
 - OpenAPI généré : http://localhost:8081/v3/api-docs
 - Contrat métier cible : [docs/openapi.yaml](docs/openapi.yaml)
 
-Swagger ne contient pas encore les routes métier : leur contrat cible est versionné séparément.
+Swagger décrit les routes métier disponibles.
 Pour modifier les ports ou préparer la clé IA, copier `.env.example` vers `.env` à la racine.
 Ne jamais placer cette clé dans une variable `VITE_*` ou dans le navigateur.
 
@@ -48,7 +44,7 @@ docker compose logs -f api
 docker compose down
 ```
 
-Les volumes PostgreSQL et photos sont conservés par `down`. `down --volumes` efface ces
+Les photos sont stockées dans PostgreSQL ; le volume de base est conservé par `down`. `down --volumes` efface ces
 données locales. Les ports sont liés à localhost ; ce Compose est destiné au développement,
 pas à une exposition Internet avec les identifiants de démonstration.
 
@@ -63,8 +59,8 @@ cd apps/api
 ./mvnw spring-boot:run
 ```
 
-Sur PowerShell, remplacer `./mvnw` par `.\mvnw.cmd`. Le profil `local` utilise H2 en mémoire
-sur le port 8081. Les données H2 sont perdues au redémarrage. Le backend ne lit pas
+Sur PowerShell, remplacer `./mvnw` par `.\mvnw.cmd`. Le profil `local` utilise PostgreSQL
+et nécessite une base existante et `POSTGRES_PASSWORD` ; voir le guide API. Le serveur écoute sur 8081. Le backend ne lit pas
 automatiquement le fichier `.env` de Compose : exporter les variables nécessaires dans le terminal.
 
 Frontend, dans un autre terminal :
@@ -122,7 +118,7 @@ MVP prévu : saisie texte/photo → extraction IA → correction humaine → con
 filtrable et carte. La localisation est choisie par le citoyen ; l'IA n'invente pas les coordonnées.
 
 Modèle prévu : **Gemma 4**, modèle open-weight sous Apache 2.0, appelé via API hébergée
-avec le SDK Google GenAI Java. Identifiant initial prévu : `gemma-4-26b-a4b-it`.
+avec l’API REST Google `generateContent`. Identifiant configuré par défaut : `gemma-4-26b-a4b-it`.
 L'accès réel avec la clé, les entrées image et le JSON structuré restent à valider par Dev B.
 Références : [Gemma 4](https://ai.google.dev/gemma/docs/core),
 [API hébergée](https://ai.google.dev/gemma/docs/core/gemma_on_gemini_api),

@@ -9,7 +9,6 @@ RUN ./mvnw -B -ntp package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S samasignal && adduser -S -G samasignal samasignal
 WORKDIR /app
-RUN mkdir -p /app/uploads && chown samasignal:samasignal /app/uploads
 COPY --from=build --chown=samasignal:samasignal /app/target/api-0.1.0-SNAPSHOT.jar app.jar
 USER samasignal
 EXPOSE 8081

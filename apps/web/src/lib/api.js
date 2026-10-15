@@ -6,7 +6,7 @@ export async function request(path, options = {}) {
     const error = new Error(body?.message || `Le service a répondu ${response.status}.`)
     error.status = response.status
     error.code = body?.code
-    error.fieldErrors = body?.fieldErrors || {}
+    error.fieldErrors = body?.erreursChamps || {}
     throw error
   }
   return body
@@ -14,17 +14,17 @@ export async function request(path, options = {}) {
 
 export const getHealth = (signal) => request('/actuator/health', { signal })
 
-// Activate these routes once Dev B implements the contract. No fake fallback.
+// Routes publiques du parcours citoyen.
 export const reportsApi = {
-  analyze: (formData, signal) => request('/api/reports/analyze', {
+  analyze: (formData, signal) => request('/api/v2/signalements/analyser', {
     method: 'POST', body: formData, signal,
   }),
-  confirm: (id, corrections, signal) => request(`/api/reports/${encodeURIComponent(id)}/confirm`, {
+  confirm: (id, corrections, signal) => request(`/api/v2/signalements/${encodeURIComponent(id)}/confirmer`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(corrections), signal,
   }),
   list: (filters = {}, signal) => {
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value))
-    return request(`/api/reports${query.size ? `?${query}` : ''}`, { signal })
+    return request(`/api/v2/signalements${query.size ? `?${query}` : ''}`, { signal })
   },
 }

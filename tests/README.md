@@ -3,7 +3,8 @@
 Les tests exécutables actuels sont colocalisés dans `apps/api/src/test` et `apps/web/test`.
 La CI complète ces tests par un démarrage Compose avec PostgreSQL et vérifie le reverse proxy.
 
-Scénarios E2E à ajouter quand les routes métier existent :
+Les tests API couvrent le parcours HTTP avec persistance, les filtres, la confirmation,
+les conflits, les photos et les erreurs IA. Scénarios E2E navigateur à ajouter :
 
 1. Texte et photo → extraction → correction → confirmation → visible dans liste et carte.
 2. Texte seul, lieu absent → complétion obligatoire avant confirmation.

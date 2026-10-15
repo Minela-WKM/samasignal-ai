@@ -1,8 +1,5 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:samasignal;DB_CLOSE_DELAY=-1
-    username: sa
-    password: ""
-  h2:
-    console:
-      enabled: false
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:sma signalement}
+    username: ${POSTGRES_USER:}
+    password: ${POSTGRES_PASSWORD:}
