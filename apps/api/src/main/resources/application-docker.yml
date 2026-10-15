@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/${POSTGRES_DB:samasignal}
+    username: ${POSTGRES_USER:samasignal}
+    password: ${POSTGRES_PASSWORD}

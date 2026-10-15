@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: SamaSignal AI — contrat cible MVP
+  version: 0.1.0
+  description: |
+    Contrat partagé avant séparation des branches. Les routes métier ne sont pas
+    encore implémentées dans le socle ; /v3/api-docs décrit l'application réelle.
+    JSON camelCase. Pas d'authentification dans le MVP public.
+    Toute évolution doit être coordonnée entre frontend, backend et prompt IA.
+servers:
+  - url: http://localhost:8081
+    description: API locale
+tags:
+  - name: Reports
+    description: Parcours citoyen puis consultation publique des fiches confirmées
+paths:
+  /api/reports/analyze:
+    post:
+      tags: [Reports]
+      operationId: analyzeReport
+      summary: Analyser un texte et éventuellement une photo
+      description: |
+        Valider les entrées avant l'appel IA. Après extraction valide, créer une fiche
+        EN_ATTENTE et retourner ses champs à plat. Ne créer aucune fiche publiable
+        en cas d'échec IA. Les coordonnées facultatives sont fournies ensemble par le
+        citoyen, jamais inventées par le modèle. Journaliser chaque tentative IA.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [texteBrut]
+              properties:
+                texteBrut:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000
+                  description: Texte non blanc après trim
+                  example: Des sacs de déchets bloquent le trottoir près du marché.
+                photo:
+                  type: string
+                  format: binary
+                  description: JPEG, PNG ou WebP ; 5 Mo maximum, contenu vérifié côté serveur
+                latitude:
+                  type: number
+                  minimum: -90
+                  maximum: 90
+                longitude:
+                  type: number
+                  minimum: -180
+                  maximum: 180
+      responses:
+        '201':
+          description: Brouillon créé, à vérifier par le citoyen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+              example:
+                id: 72b6d99d-fb95-4dac-bb2d-38d818785407
+                texteBrut: Des sacs de déchets bloquent le trottoir près du marché.
+                photoUrl: /api/photos/af82e37d.jpg
+                categorie: dechet
+                resume: Déchets encombrant un trottoir.
+                localisationDeclaree: null
+                niveauUrgence: moyenne
+                elementsVisuelsDetectes: [sacs, déchets]
+                champsManquants: [localisationDeclaree, latitude, longitude]
+                scoreConfiance: 0.82
+                latitude: null
+                longitude: null
+                statut: EN_ATTENTE
+                createdAt: '2026-10-15T17:00:00Z'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '413':
+          $ref: '#/components/responses/UploadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedPhoto'
+        '502':
+          $ref: '#/components/responses/InvalidAiResponse'
+        '503':
+          $ref: '#/components/responses/AiUnavailable'
+        '504':
+          $ref: '#/components/responses/AiTimeout'
+  /api/reports/{id}/confirm:
+    post:
+      tags: [Reports]
+      operationId: confirmReport
+      summary: Confirmer la fiche après correction humaine
+      description: |
+        Envoyer toutes les valeurs éditables finales, pas un patch partiel. Le serveur
+        recalcule les champs manquants et refuse une fiche incomplète. La confirmation
+        ne déclenche pas d'appel IA. Une répétition identique retourne la fiche confirmée
+        sans doublon. Une tentative de modifier une fiche déjà confirmée retourne 409.
+        Les champs système et les preuves d'extraction ne sont pas modifiables par le client.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmReportRequest'
+            example:
+              categorie: dechet
+              resume: Déchets encombrant un trottoir.
+              localisationDeclaree: Près du marché de Grand Yoff, Dakar
+              niveauUrgence: moyenne
+              latitude: 14.741
+              longitude: -17.455
+      responses:
+        '200':
+          description: Fiche confirmée, champsManquants vide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: REPORT_NOT_FOUND — identifiant inconnu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: REPORT_ALREADY_CONFIRMED — modification après confirmation interdite
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/reports:
+    get:
+      tags: [Reports]
+      operationId: listReports
+      summary: Consulter les signalements confirmés
+      description: |
+        Retourner uniquement CONFIRME et TRAITE, triés par createdAt décroissant.
+        Les filtres se combinent avec ET. Pas de pagination dans ce MVP de démonstration.
+        EN_ATTENTE n'est jamais exposé dans cette liste. Un résultat vide est [].
+      parameters:
+        - in: query
+          name: urgence
+          schema:
+            $ref: '#/components/schemas/NiveauUrgence'
+        - in: query
+          name: categorie
+          schema:
+            $ref: '#/components/schemas/Categorie'
+      responses:
+        '200':
+          description: Liste, éventuellement vide
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Report'
+              example: []
+        '400':
+          $ref: '#/components/responses/ValidationError'
+components:
+  schemas:
+    Categorie:
+      type: string
+      enum: [dechet, eau_usee, voirie, eclairage, autre]
+    NiveauUrgence:
+      type: string
+      enum: [basse, moyenne, haute]
+    ExtractionResult:
+      type: object
+      description: |
+        Les sept champs de sortie IA. localisationDeclaree est nullable ; les listes sont
+        toujours présentes. Le score est une estimation du modèle, pas une probabilité calibrée.
+        champsManquants utilise les noms de champs du contrat ; le serveur recalcule la liste
+        métier et ajoute latitude/longitude au Report quand la position citoyenne manque.
+      required:
+        - categorie
+        - resume
+        - localisationDeclaree
+        - niveauUrgence
+        - elementsVisuelsDetectes
+        - champsManquants
+        - scoreConfiance
+      properties:
+        categorie:
+          $ref: '#/components/schemas/Categorie'
+        resume:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        localisationDeclaree:
+          type: string
+          nullable: true
+          maxLength: 500
+        niveauUrgence:
+          $ref: '#/components/schemas/NiveauUrgence'
+        elementsVisuelsDetectes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        champsManquants:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        scoreConfiance:
+          type: number
+          minimum: 0
+          maximum: 1
+    Report:
+      allOf:
+        - $ref: '#/components/schemas/ExtractionResult'
+        - type: object
+          required: [id, texteBrut, photoUrl, latitude, longitude, statut, createdAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            texteBrut:
+              type: string
+              minLength: 1
+              maxLength: 5000
+            photoUrl:
+              type: string
+              nullable: true
+              description: URL relative même origine, attribuée par le serveur ; null sans photo
+            latitude:
+              type: number
+              nullable: true
+              minimum: -90
+              maximum: 90
+            longitude:
+              type: number
+              nullable: true
+              minimum: -180
+              maximum: 180
+            statut:
+              type: string
+              enum: [EN_ATTENTE, CONFIRME, TRAITE]
+            createdAt:
+              type: string
+              format: date-time
+    ConfirmReportRequest:
+      type: object
+      additionalProperties: false
+      required: [categorie, resume, localisationDeclaree, niveauUrgence, latitude, longitude]
+      properties:
+        categorie:
+          $ref: '#/components/schemas/Categorie'
+        resume:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        localisationDeclaree:
+          type: string
+          minLength: 1
+          maxLength: 500
+        niveauUrgence:
+          $ref: '#/components/schemas/NiveauUrgence'
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+    ApiError:
+      type: object
+      required: [code, message, fieldErrors]
+      properties:
+        code:
+          type: string
+          description: Identifiant stable pour le client ; jamais de stack trace
+        message:
+          type: string
+        fieldErrors:
+          type: object
+          additionalProperties:
+            type: string
+      example:
+        code: VALIDATION_ERROR
+        message: Complétez les champs requis.
+        fieldErrors:
+          localisationDeclaree: Indiquez le lieu du signalement.
+  responses:
+    ValidationError:
+      description: VALIDATION_ERROR — entrée invalide, champ manquant ou enum inconnue
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    UploadTooLarge:
+      description: PHOTO_TOO_LARGE — photo supérieure à 5 Mo ou requête supérieure à 6 Mo
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    UnsupportedPhoto:
+      description: UNSUPPORTED_PHOTO — format non accepté
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    InvalidAiResponse:
+      description: AI_INVALID_RESPONSE — extraction non conforme au schéma métier
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    AiUnavailable:
+      description: AI_UNAVAILABLE — fournisseur indisponible, quota ou configuration manquante
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    AiTimeout:
+      description: AI_TIMEOUT — délai maximal fournisseur dépassé (30 secondes)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'

@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root { font-family: "Segoe UI", system-ui, sans-serif; color: #183c33; background: #f7f7ef; font-synthesis: none; }
+body { margin: 0; min-width: 320px; }
+.brand { font-size: 1.5rem; font-weight: 750; text-decoration: none; letter-spacing: -.05em; }
+.brand span { color: #537568; }
+.badge { border: 1px solid #b5c8bc; border-radius: 999px; padding: .4rem .8rem; font-size: .8rem; }
+.eyebrow { text-transform: uppercase; font-size: .75rem; font-weight: 700; letter-spacing: .14em; color: #526c5e; }
+.action { background: #164e43; color: white; padding: .65rem 1rem; border-radius: .5rem; cursor: pointer; font-size: .875rem; }
+.action:disabled { opacity: .65; cursor: wait; }
+a:not(.brand):hover { text-decoration: underline; }
+:focus-visible { outline: 3px solid #b45309; outline-offset: 4px; }
+.skip-link { position: absolute; left: 1rem; top: -5rem; padding: 1rem; background: white; z-index: 10; }
+.skip-link:focus { top: 1rem; }
