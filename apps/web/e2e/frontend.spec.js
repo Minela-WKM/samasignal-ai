@@ -130,7 +130,7 @@ test('confirmation errors remain editable and refresh failure cannot undo succes
   await page.goto('/'); await enterCorrection(page); await completeCorrection(page)
   await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
   await expect(page.getByLabel('Lieu du signalement', { exact: true })).toHaveAttribute('aria-invalid', 'true')
-  await page.route('**/api/reports/*/confirm', route => route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'CONFIRME' } }))
+  await page.route('**/api/reports/*/confirm', route => route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'CONFIRME', champsManquants: [] } }))
   await completeCorrection(page)
   await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
   await page.route('**/api/reports', route => route.fulfill({ status: 503, json: {} }))

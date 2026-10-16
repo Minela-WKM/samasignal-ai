@@ -31,7 +31,13 @@ export function assertReport(value, expectedStatus) {
     !Number.isFinite(value.scoreConfiance) || value.scoreConfiance < 0 || value.scoreConfiance > 1 ||
     !Array.isArray(value.champsManquants) || !value.champsManquants.every(s => typeof s === 'string') ||
     !Array.isArray(value.elementsVisuelsDetectes) || !value.elementsVisuelsDetectes.every(s => typeof s === 'string') ||
-    typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt))
+    typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt)) ||
+    (expectedStatus === 'CONFIRME' && (
+      value.champsManquants.length > 0 ||
+      !hasPosition(value) ||
+      typeof value.localisationDeclaree !== 'string' ||
+      !value.localisationDeclaree.trim()
+    ))
   if (invalid) throw Object.assign(new Error('La réponse du serveur ne respecte pas le contrat attendu.'), { code: 'INVALID_RESPONSE' })
   return value
 }

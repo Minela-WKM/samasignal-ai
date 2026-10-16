@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { categories, urgencies, confidence, hasPosition, filterReports, canUseDemo, validatePhoto, validateConfirmation, assertReportList } from '../src/lib/reports.js'
+import { categories, urgencies, confidence, hasPosition, filterReports, canUseDemo, validatePhoto, validateConfirmation, assertReport, assertReportList } from '../src/lib/reports.js'
 import { demoReports } from '../src/fixtures/demoReports.js'
 
 test('display labels never rename the wire values', () => {
@@ -38,3 +38,31 @@ test('malformed lists, private drafts and duplicate IDs cannot enter the dashboa
   assert.deepEqual(assertReportList([]), [])
   for (const value of [{}, [{}], [demoReports[0], demoReports[0]], [{ ...demoReports[0], statut: 'EN_ATTENTE' }], [{ ...demoReports[0], scoreConfiance: 50 }]]) assert.throws(() => assertReportList(value), { code: 'INVALID_RESPONSE' })
 })
+test('confirmation completeness invariants are enforced when expectedStatus is CONFIRME', () => {
+  const complete = demoReports[0]
+  assert.equal(assertReport(complete, 'CONFIRME'), complete)
+
+  // nonempty champsManquants
+  assert.throws(() => assertReport({ ...complete, champsManquants: ['localisationDeclaree'] }, 'CONFIRME'), { code: 'INVALID_RESPONSE' })
+
+  // missing or invalid coordinates
+  for (const invalidCoords of [
+    { latitude: null, longitude: -17.4512 },
+    { latitude: 14.6838, longitude: null },
+    { latitude: 91, longitude: -17.4512 },
+    { latitude: 14.6838, longitude: 181 },
+    { latitude: '14.6838', longitude: -17.4512 },
+  ]) {
+    assert.throws(() => assertReport({ ...complete, ...invalidCoords }, 'CONFIRME'), { code: 'INVALID_RESPONSE' })
+  }
+
+  // blank or missing location
+  for (const localisationDeclaree of [null, '', '   ']) {
+    assert.throws(() => assertReport({ ...complete, localisationDeclaree }, 'CONFIRME'), { code: 'INVALID_RESPONSE' })
+  }
+
+  // draft reports can have missing fields when expectedStatus is EN_ATTENTE
+  const draft = { ...complete, statut: 'EN_ATTENTE', localisationDeclaree: null, latitude: null, longitude: null, champsManquants: ['latitude'] }
+  assert.equal(assertReport(draft, 'EN_ATTENTE'), draft)
+})
+
