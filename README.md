@@ -8,18 +8,21 @@ corrigé et confirmé par le citoyen, puis visible dans un dashboard municipal p
 
 ## État du projet
 
-Ce dépôt contient le **socle technique**, pas encore le MVP métier.
+Ce dépôt contient le **frontend complet et le socle backend**. Les routes métier et le
+pipeline IA restent à livrer par Dev B ; aucun succès d'analyse/confirmation n'est simulé.
 
 | Disponible | À développer sur les branches dédiées |
 | --- | --- |
-| Vue 3, Vite, Tailwind et page d'accueil | Formulaire texte/photo, correction, carte Leaflet et dashboard |
+| Vue 3, Tailwind, Leaflet : parcours citoyen complet et supervision | Recette des routes réelles avec Dev B |
 | Spring Boot, JPA, H2/PostgreSQL, healthcheck et Swagger | Entités, migrations, routes de signalement et pipeline IA |
 | Contrat OpenAPI et DTO Java | Intégration Gemma 4 et validation réelle texte + image |
-| Docker Compose et workflow CI | SamaA11y, datasets et vidéo de démonstration |
+| Docker Compose, tests E2E, SamaA11y et workflow CI | Datasets backend et vidéo de démonstration |
 
 Les routes `/api/reports` sont **contractuelles et non implémentées** : elles ne retournent
 pas de faux succès. Aucun appel IA n'est effectué par le socle. Le healthcheck mesure
-l'application et sa base, pas l'accès à Gemma.
+l'application et sa base, pas l'accès à Gemma. Le dashboard peut afficher cinq exemples
+synthétiques clairement signalés lors d'une indisponibilité initiale. Ces exemples ne sont
+jamais envoyés aux routes d'analyse/confirmation. Une réponse vide ne déclenche pas la démo.
 
 ## Démarrage avec Docker
 
@@ -96,14 +99,15 @@ docker compose up --build --wait
 
 GitHub Actions exécute sur chaque push de branche et chaque PR vers `main` : tests/build
 frontend, tests/build backend et démarrage Compose avec PostgreSQL, healthchecks et Swagger.
-La CI du socle n'utilise aucun secret IA. Le contrôle SamaA11y sera ajouté dès que sa CLI existe.
+Les tests E2E et SamaA11y utilisent une API et des tuiles simulées, sans secret IA.
+La CI publie les rapports JSON/Markdown et captures SamaA11y en artefact.
 
 ## Organisation et responsabilités
 
 ```text
 apps/web/        Vue 3 + Vite + Tailwind — Dev A (Minela)
 apps/api/        Spring Boot 3.5 + Java 21 — Dev B
-tools/sama-a11y/ Future CLI Playwright + axe-core — Dev A
+tools/sama-a11y/ CLI Playwright + axe-core — Dev A
 docs/           Architecture, contrat et planning communs
 tests/          Scénarios de recette transverses
 ```
@@ -134,7 +138,8 @@ sensibles. Les fixtures doivent être synthétiques et les photos réutilisables
 
 ## Accessibilité et livraison
 
-SamaA11y sera une CLI indépendante, sans écran ni base de données, générant JSON et Markdown.
+SamaA11y est une CLI indépendante, sans écran ni base de données, générant JSON et Markdown.
+Voir [son guide](tools/sama-a11y/README.md) et [le guide frontend](apps/web/README.md).
 Cible automatisée : **WCAG 2.1 AA** via axe-core. Ces tests ne constituent ni une certification
 de conformité ni un audit **RGAA**, qui demande aussi des contrôles manuels.
 

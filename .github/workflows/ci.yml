@@ -30,6 +30,44 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-e2e
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+
+  accessibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            tools/sama-a11y/package-lock.json
+      - run: npm ci --prefix apps/web
+      - run: npm ci --prefix tools/sama-a11y
+      - run: npx --prefix apps/web playwright install --with-deps chromium
+      - name: Audit input, correction and dashboard (synthetic API)
+        run: |
+          npm --prefix apps/web run dev -- --port 5173 --strictPort > /tmp/samasignal-vite.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:5173/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node tools/sama-a11y/cli.mjs http://127.0.0.1:5173 --prepare apps/web/e2e/a11y-scenario.mjs --output reports/sama-a11y
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sama-a11y
+          path: reports/sama-a11y
 
   api:
     runs-on: ubuntu-latest
