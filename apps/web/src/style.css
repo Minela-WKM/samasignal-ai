@@ -1,6 +1,7 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 :root { font-family: "Segoe UI", system-ui, sans-serif; color: #18181b; background: #f4f4f5; color-scheme: light; font-synthesis: none; --header-height: 150px; }
 * { box-sizing: border-box; }
+html, body { max-width: 100vw; overflow-x: hidden; }
 body { margin: 0; min-width: 320px; }
 button, input, select, textarea { font: inherit; }
 ::placeholder { color: #52525b; opacity: 1; }
@@ -55,7 +56,7 @@ a { color: #1d4ed8; text-decoration: underline; text-underline-offset: 3px; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
 .filters { display: flex; flex-wrap: wrap; gap: 18px; align-items: end; margin: 24px 0; padding: 18px; }
 .filters .field { margin: 0; flex: 1; min-width: min(180px, 100%); }
-.table-scroll { overflow-x: auto; max-width: 100%; border-radius: 4px; }
+.table-scroll { overflow-x: auto; max-width: 100%; border-radius: 4px; position: relative; }
 table { width: 100%; min-width: 650px; border-collapse: collapse; font-size: 13px; }
 caption { text-align: left; padding: 18px; font-weight: 700; font-size: 16px; }
 th { text-align: left; background: #f4f4f5; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; padding: 14px 12px; border-block: 2px solid #18181b; }
