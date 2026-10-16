@@ -1,9 +1,9 @@
 import { demoReports } from '../src/fixtures/demoReports.js'
 export const records = demoReports.map((r, i) => ({ ...r, id: `72b6d99d-fb95-4dac-bb2d-38d81878540${i}` }))
 export const draft = { ...records[0], localisationDeclaree: null, latitude: null, longitude: null, statut: 'EN_ATTENTE', champsManquants: ['localisationDeclaree', 'latitude', 'longitude'] }
-const blankTile = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64')
+const blankTile = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#e4e4e7"/><path d="M0 128H256M128 0V256" stroke="#d4d4d8"/></svg>'
 export async function stubTiles(page) {
-  await page.route('https://tile.openstreetmap.org/**', route => route.fulfill({ contentType: 'image/png', body: blankTile }))
+  await page.route('https://tile.openstreetmap.org/**', route => route.fulfill({ contentType: 'image/svg+xml', body: blankTile }))
 }
 export async function mockApi(page) {
   await stubTiles(page)

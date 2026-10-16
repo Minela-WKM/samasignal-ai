@@ -3,6 +3,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
 button, input, select, textarea { font: inherit; }
+::placeholder { color: #52525b; opacity: 1; }
 button, a, input, select, textarea, [tabindex] { scroll-margin-top: calc(var(--header-height) + 24px); }
 :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 4px; }
 h1:focus, main:focus { outline: none; }

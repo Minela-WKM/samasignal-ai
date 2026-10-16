@@ -161,7 +161,43 @@ test('320px layout and 200% content scale do not obscure the page or overflow gl
     await page.getByRole('button', { name: view, exact: true }).click()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   }
+  await enterCorrection(page)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.evaluate(() => { document.body.style.zoom = '2' })
+  await page.evaluate(() => window.scrollTo(0, 0))
   await expect.poll(() => page.evaluate(() => document.querySelector('h1').getBoundingClientRect().top >= document.querySelector('header').getBoundingClientRect().bottom)).toBe(true)
+})
+
+test('client deadline preserves draft and does not automatically retry analysis', async ({ page }) => {
+  await mockApi(page)
+  await page.clock.install()
+  let calls = 0, release
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route('**/api/reports/analyze', async route => { calls++; await gate; await route.fulfill({ status: 201, json: draft }).catch(() => {}) })
+  await page.goto('/')
+  await page.getByLabel('Que se passe-t-il ?').fill('Un problème de voirie')
+  await page.getByRole('button', { name: 'Analyser mon signalement' }).click()
+  await expect(page.getByRole('button', { name: 'Analyse en cours…' })).toBeDisabled()
+  await page.clock.fastForward(36000)
+  await expect(page.getByRole('alert')).toContainText('délai de réponse')
+  await expect(page.getByLabel('Que se passe-t-il ?')).toHaveValue('Un problème de voirie')
+  release(); expect(calls).toBe(1)
+})
+
+test('pending confirmation cannot be submitted twice', async ({ page }) => {
+  await mockApi(page)
+  let calls = 0, release
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route('**/api/reports/*/confirm', async route => {
+    calls++; await gate
+    await route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'CONFIRME', champsManquants: [] } })
+  })
+  await page.goto('/'); await enterCorrection(page); await completeCorrection(page)
+  await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Confirmation en cours…' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Corriger la fiche' })).toBeDisabled()
+  release()
+  await expect(page.getByRole('heading', { name: 'Signalement confirmé', exact: true })).toBeVisible()
+  expect(calls).toBe(1)
 })

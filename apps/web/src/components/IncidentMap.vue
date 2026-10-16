@@ -20,7 +20,7 @@ function render() {
   if (props.picker) {
     if (props.position && hasPosition(props.position)) {
       selectedMarker = L.marker([props.position.latitude, props.position.longitude], { icon: icon('+'), title: 'Position choisie', keyboard: true }).addTo(layer)
-      selectedMarker.getElement()?.setAttribute('aria-label', 'Position choisie')
+      selectedMarker.getElement()?.setAttribute('aria-label', '+ Position choisie')
       map.panTo(selectedMarker.getLatLng(), { animate: false })
     }
     return
@@ -34,7 +34,7 @@ function render() {
     content.append(title, urgency)
     const marker = L.marker([report.latitude, report.longitude], { icon: icon(index + 1), title: report.resume, keyboard: true })
       .bindPopup(content).addTo(layer)
-    marker.getElement()?.setAttribute('aria-label', `Signalement : ${report.resume}`)
+    marker.getElement()?.setAttribute('aria-label', `${index + 1}. Signalement : ${report.resume}`)
     markers.set(report.id, marker)
   })
 }
@@ -52,10 +52,11 @@ onMounted(() => {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19,
   }).on('tileerror', () => { tileError.value = true }).addTo(map)
   map.zoomControl.setPosition('topright')
+  map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>')
   const zoomIn = canvas.value.querySelector('.leaflet-control-zoom-in')
   const zoomOut = canvas.value.querySelector('.leaflet-control-zoom-out')
-  zoomIn?.setAttribute('aria-label', 'Zoom avant')
-  zoomOut?.setAttribute('aria-label', 'Zoom arrière')
+  zoomIn?.setAttribute('aria-label', '+ Zoom avant')
+  zoomOut?.setAttribute('aria-label', '− Zoom arrière')
   layer = L.layerGroup().addTo(map)
   if (props.picker) map.on('click', ({ latlng }) => emit('pick', { latitude: Number(latlng.lat.toFixed(6)), longitude: Number(latlng.lng.toFixed(6)) }))
   observer = new ResizeObserver(() => map?.invalidateSize({ animate: false }))

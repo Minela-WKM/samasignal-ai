@@ -36,4 +36,6 @@ test('computed badge colors exceed AAA and primary action exceeds AA', async ({ 
   expect(await contrast(page.getByRole('button', { name: 'Analyser mon signalement' }))).toBeGreaterThan(4.5)
   await page.getByRole('button', { name: 'Supervision Mairie', exact: true }).click()
   for (const label of ['CRITIQUE', 'MOYEN', 'FAIBLE']) expect(await contrast(page.locator('tbody').getByText(label, { exact: true }).first())).toBeGreaterThanOrEqual(7)
+  expect(await contrast(page.locator('.map-pin').first())).toBeGreaterThan(4.5)
+  expect(await contrast(page.getByRole('button', { name: '+ Zoom avant', exact: true }))).toBeGreaterThan(4.5)
 })

@@ -77,6 +77,7 @@ async function analyze() {
   finally { busy.value = false }
 }
 async function review() {
+  geoVersion++; geoBusy.value = false
   errors.value = validateConfirmation(values.value)
   message.value = Object.keys(errors.value).length ? 'Complétez les champs avant de continuer.' : ''
   if (message.value) { await focus(summary); return }
