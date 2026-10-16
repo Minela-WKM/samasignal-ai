@@ -1,0 +1,11 @@
+{
+  "name": "sama-a11y",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Audits WCAG 2.1 AA avec Playwright et axe-core, rapports JSON et Markdown",
+  "engines": { "node": ">=24" },
+  "bin": { "sama-a11y": "./cli.mjs" },
+  "scripts": { "audit": "node cli.mjs" },
+  "dependencies": { "playwright": "1.64.1", "axe-core": "4.14.0" }
+}

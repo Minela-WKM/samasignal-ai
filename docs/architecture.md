@@ -7,14 +7,14 @@ Spring Boot sur 8081 ; dans Docker, nginx sert le build et fait le même proxy. 
 embarque Web, Validation, JPA, Actuator et springdoc-openapi. Il utilise H2 en mémoire par
 défaut et PostgreSQL avec le profil `docker`.
 
-Le seul flux métier du socle est le contrôle de disponibilité : Vue → `/actuator/health` →
-Spring/connexion DB. Les routes de signalement ne sont pas implémentées ; Swagger décrit
-uniquement l'application réelle. `openapi.yaml` décrit le contrat à implémenter.
+Le frontend propose un parcours citoyen complet et une supervision conservés avec `KeepAlive`.
+Il appelle les routes du contrat, mais le backend de cette branche reste un socle sans routes
+métier. Swagger décrit le backend réel ; `openapi.yaml` reste le contrat cible inchangé.
 
 Le choix Spring Boot est fondé sur la vélocité de Dev B, responsable du backend.
 JDK 21, Spring Boot 3.5 et Maven Wrapper sont la base commune ; le frontend utilise Node 24.
 
-## Flux MVP à construire
+## Flux MVP frontend et intégration backend
 
 1. Le citoyen saisit du texte et éventuellement une photo ; il peut déjà choisir un point.
 2. `/analyze` valide les entrées, appelle Gemma et valide sa réponse, puis crée `EN_ATTENTE`.
@@ -24,7 +24,22 @@ JDK 21, Spring Boot 3.5 et Maven Wrapper sont la base commune ; le frontend util
 
 La sortie IA reste un `ExtractionResult` à sept champs. Les réponses HTTP sont des
 `ReportResponse` plats ; les coordonnées, identifiant, statut et dates appartiennent au système.
-Le client frontend centralise ses appels dans `src/lib/api.js` sans résultat simulé implicite.
+Le client frontend centralise ses appels dans `src/lib/api.js` : délais 35 s (analyse) et
+15 s (liste/confirmation), annulation et validation des réponses. Aucun POST n'est réessayé
+automatiquement. Le brouillon reste en mémoire uniquement, sans localStorage.
+
+## Repli dashboard adopté le 16 octobre
+
+Avant tout chargement réel réussi, un échec réseau, timeout, 404 ou 5xx de la liste affiche
+cinq fixtures synthétiques avec un bandeau permanent et un bouton Réessayer. Une liste vide,
+une réponse invalide ou 401/403 ne déclenche pas ce repli. Après succès réel, les données réelles
+sont conservées lors d'une panne et signalées comme potentiellement obsolètes. Une confirmation
+citoyenne récente empêche également le repli fictif. Les sources ne sont jamais mélangées.
+Analyse et confirmation restent réelles.
+
+Les marqueurs partagent les filtres du tableau ; un incident sans coordonnées reste consultable
+sans marqueur. Les popups utilisent des nœuds texte sûrs. Un fond OSM indisponible n'empêche pas
+la saisie des coordonnées au clavier ni la consultation des informations textuelles.
 
 ## Persistance à ajouter par Dev B
 
