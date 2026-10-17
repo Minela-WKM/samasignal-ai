@@ -3,7 +3,7 @@ services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-sma signalement}
+      POSTGRES_DB: ${POSTGRES_DB:-sma_signalement}
       POSTGRES_USER: ${POSTGRES_USER:-samasignal}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
     volumes:
@@ -17,7 +17,7 @@ services:
     build: ./apps/api
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      POSTGRES_DB: ${POSTGRES_DB:-sma signalement}
+      POSTGRES_DB: ${POSTGRES_DB:-sma_signalement}
       POSTGRES_USER: ${POSTGRES_USER:-samasignal}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}

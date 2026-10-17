@@ -1,5 +1,5 @@
 spring:
   datasource:
-    url: jdbc:postgresql://db:5432/${POSTGRES_DB:sma signalement}
-    username: ${POSTGRES_USER:}
-    password: ${POSTGRES_PASSWORD:}
+    url: jdbc:postgresql://db:5432/${POSTGRES_DB:sma_signalement}
+    username: ${POSTGRES_USER:samasignal}
+    password: ${POSTGRES_PASSWORD}
