@@ -144,6 +144,8 @@ licences respectives. Aucun code SaniData n'est repris comme socle.
 
 ## Préparation Render
 
-Le fichier `render.yaml` prépare deux services Docker et PostgreSQL, avec déploiement depuis
-`main` après réussite de la CI. Il ne déclenche pas de création de services à lui seul.
-Voir [le guide Render](docs/deploiement-render.md) pour la fusion, les secrets et la recette.
+Le fichier `render.yaml` prépare deux services Docker et PostgreSQL. Les services utilisent
+la branche choisie dans Render : `feature/render-deployment` pour le premier essai,
+puis `main` après revue et CI verte. Aucun service n'est créé par le fichier seul.
+Voir [le guide Render pas à pas](docs/deploiement-render.md) pour le Blueprint, les secrets,
+l'activation de l'IA et le dépannage.

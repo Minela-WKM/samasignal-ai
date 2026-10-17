@@ -1,11 +1,11 @@
-# Préparation uniquement : lancer le Blueprint après fusion et CI verte sur main.
+# Les services héritent de la branche choisie à la création du Blueprint.
+# Tester avec feature/render-deployment ; basculer vers main après revue et CI verte.
 services:
   - type: web
     name: samasignal-api
     runtime: docker
     plan: free
     region: frankfurt
-    branch: main
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: ./apps/api
     healthCheckPath: /actuator/health
@@ -27,8 +27,6 @@ services:
         fromDatabase: {name: sma-signalement, property: user}
       - key: POSTGRES_PASSWORD
         fromDatabase: {name: sma-signalement, property: password}
-      - key: PUBLIC_API_HOST
-        fromService: {name: samasignal-api, type: web, envVarKey: RENDER_EXTERNAL_HOSTNAME}
       - key: AI_MODE
         value: disabled
       - key: GEMMA_MODEL
@@ -38,7 +36,6 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-    branch: main
     dockerfilePath: ./apps/web/Dockerfile
     dockerContext: ./apps/web
     healthCheckPath: /healthz
@@ -49,10 +46,12 @@ services:
       - key: API_SCHEME
         value: https
       - key: API_HOST
-        fromService: {name: samasignal-api, type: web, envVarKey: PUBLIC_API_HOST}
+        # Référence directe : Render refuse les chaînes de variables référencées.
+        fromService: {name: samasignal-api, type: web, envVarKey: RENDER_EXTERNAL_HOSTNAME}
 databases:
   - name: sma-signalement
-    databaseName: "sma signalement"
+    # Nom SQL généré pour une nouvelle base ; nom existant conservé sinon.
+    # L'API récupère le nom effectif via fromDatabase.
     postgresMajorVersion: "17"
     plan: free
     region: frankfurt
