@@ -1,0 +1,11 @@
+server:
+  port: ${PORT:10000}
+  forward-headers-strategy: framework
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT:5432}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
