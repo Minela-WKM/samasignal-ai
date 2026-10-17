@@ -3,17 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24 <25" },
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test"
+    "test": "node --test test/*.test.js",
+    "test:e2e": "playwright test",
+    "test:a11y": "node ../../tools/sama-a11y/cli.mjs http://127.0.0.1:5173 --prepare ./e2e/a11y-scenario.mjs --output ../../reports/sama-a11y"
   },
-  "dependencies": { "vue": "3.5.44" },
+  "dependencies": {
+    "leaflet": "1.9.4",
+    "vue": "3.5.44"
+  },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.3",
     "@vitejs/plugin-vue": "6.0.10",
+    "axe-core": "4.14.0",
     "tailwindcss": "4.3.3",
     "vite": "8.3.4"
   }

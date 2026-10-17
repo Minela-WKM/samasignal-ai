@@ -1,12 +1,14 @@
-package dev.samasignal.api.contract;
+package dev.samasignal.api.dto.reponse;
+
+import dev.samasignal.api.enumeration.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** Flat HTTP response. Do not expose a JPA entity as the API contract. */
-public record ReportResponse(
+/** Fiche du signalement envoyée à l’application, sans exposer l’entité JPA. */
+public record SignalementDto(
         UUID id,
         String texteBrut,
         String photoUrl,
@@ -19,6 +21,5 @@ public record ReportResponse(
         BigDecimal scoreConfiance,
         BigDecimal latitude,
         BigDecimal longitude,
-        ReportStatus statut,
-        Instant createdAt
-) {}
+        StatutSignalement statut,
+        Instant dateCreation) {}
