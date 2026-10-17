@@ -37,4 +37,12 @@ La validation réelle du modèle avec clé fournisseur et photo doit être effec
 ## Périmètre
 
 L'accès est public, conformément au cahier des charges : aucune authentification ni rôle municipal.
-Les journaux IA ne sont pas exposés par l'API. Le frontend métier et SamaA11y restent des livrables distincts.
+Les journaux IA ne sont pas exposés par l'API. Le frontend métier et SamaA11y sont intégrés dans cette branche.
+
+## Intégration et Render
+
+Le frontend utilise les adresses `/api/v2/signalements`, `dateCreation` et `erreursChamps` du backend.
+La gestion des délais et des annulations du frontend est conservée.
+Nginx génère sa configuration au démarrage à partir de `PORT`, `API_SCHEME` et `API_HOST`.
+Compose conserve `http://api:8081` ; Render utilise l’hôte HTTPS public de l’API.
+Le profil Spring `render` reçoit les propriétés de la base gérée, sans URL ou secret versionné.

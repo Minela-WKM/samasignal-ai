@@ -11,8 +11,8 @@ corrigé et confirmé par le citoyen, puis visible dans un dashboard municipal p
 Le backend fournit une API MVC en français sous `/api/v2/signalements` : analyse IA,
 confirmation citoyenne, liste filtrée et passage au statut traité. Il utilise PostgreSQL,
 des migrations Flyway et des DTO distincts des entités JPA.
-Le frontend conserve sa page d'accueil ; le formulaire, la correction et la carte restent à construire.
-SamaA11y, les recettes fournisseur et la vidéo restent également à livrer.
+La branche d’intégration inclut le formulaire citoyen, la correction, le tableau de bord,
+la carte Leaflet et la CLI SamaA11y issus du frontend. La recette avec Gemma réel et la mise en ligne restent à effectuer.
 
 Le healthcheck mesure l'application et sa base, pas l'accès à Gemma.
 Voir [le guide de l'API](apps/api/README.md) pour l'architecture et les exemples de requêtes.
@@ -99,7 +99,7 @@ La CI du socle n'utilise aucun secret IA. Le contrôle SamaA11y sera ajouté dè
 ```text
 apps/web/        Vue 3 + Vite + Tailwind — Dev A (Minela)
 apps/api/        Spring Boot 3.5 + Java 21 — Dev B
-tools/sama-a11y/ Future CLI Playwright + axe-core — Dev A
+tools/sama-a11y/ CLI Playwright + axe-core — Dev A
 docs/           Architecture, contrat et planning communs
 tests/          Scénarios de recette transverses
 ```
@@ -130,7 +130,7 @@ sensibles. Les fixtures doivent être synthétiques et les photos réutilisables
 
 ## Accessibilité et livraison
 
-SamaA11y sera une CLI indépendante, sans écran ni base de données, générant JSON et Markdown.
+SamaA11y est une CLI indépendante, sans écran ni base de données, générant JSON et Markdown.
 Cible automatisée : **WCAG 2.1 AA** via axe-core. Ces tests ne constituent ni une certification
 de conformité ni un audit **RGAA**, qui demande aussi des contrôles manuels.
 
@@ -141,3 +141,9 @@ Docker et vidéo de 3 minutes maximum. Code freeze prévu à 12 h (UTC / Atlanti
 
 Code du projet sous [MIT](LICENSE). Les modèles, dépendances et données conservent leurs
 licences respectives. Aucun code SaniData n'est repris comme socle.
+
+## Préparation Render
+
+Le fichier `render.yaml` prépare deux services Docker et PostgreSQL, avec déploiement depuis
+`main` après réussite de la CI. Il ne déclenche pas de création de services à lui seul.
+Voir [le guide Render](docs/deploiement-render.md) pour la fusion, les secrets et la recette.

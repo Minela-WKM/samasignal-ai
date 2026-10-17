@@ -1,7 +1,9 @@
 # Plan d'exécution — 15 au 19 octobre 2026
 
 Le socle est commun sur `main`, puis Dev A et Dev B partent du même commit.
-Il ne livre ni pipeline IA ni parcours métier. Premier commit local réel : 15 octobre.
+Le socle initial ne livrait ni pipeline IA ni parcours métier. La branche frontend livre maintenant
+le parcours, la supervision, les tests E2E et SamaA11y. L'intégration réelle dépend des routes de Dev B.
+Premier commit local réel : 15 octobre.
 
 | Jalon | Dev A — Minela | Dev B | Acceptation |
 | --- | --- | --- | --- |
@@ -16,8 +18,9 @@ du formulaire de soumission, à vérifier par l'équipe.
 
 ## Dépendances et coupe-circuits
 
-- Le frontend peut développer avec des mocks explicites fondés sur OpenAPI ; ils ne sont pas
-  branchés automatiquement en cas de panne de l'API.
+- Les tests utilisent des mocks explicites fondés sur OpenAPI. Seul le dashboard peut afficher
+  cinq exemples automatiquement lors d'une indisponibilité initiale, avec bandeau permanent.
+  L'analyse et la confirmation ne sont jamais simulées.
 - Le contrat est gelé avant séparation. Une correction passe par accord et PR commune.
 - J2 constitue la première fusion métier, pas une attente jusqu'au code freeze.
 - La CLI SamaA11y reste à 150 lignes de logique métier maximum, sans UI ni base.
