@@ -83,7 +83,9 @@ Utiliser les URL réellement affichées par Render, sans déduire leur sous-doma
 | Frontend : `/api/v2/signalements` | JSON de la liste, éventuellement `[]` sur une base neuve |
 | Frontend : `/swagger-ui/index.html` | Documentation interactive de l'API |
 
-Le frontend reçoit automatiquement `API_HOST` depuis `PUBLIC_API_HOST` de l'API.
+Le frontend reçoit automatiquement `API_HOST` directement depuis `RENDER_EXTERNAL_HOSTNAME`
+de l'API. Ne pas passer par une variable intermédiaire définie avec `fromService` : Render
+refuse de référencer une variable qui est elle-même une référence.
 La valeur est un **nom d'hôte sans `https://` ni chemin** ; `API_SCHEME=https` fournit le protocole.
 L'API utilise son adresse publique HTTPS car les Web Services gratuits ne reçoivent pas de
 trafic entrant privé. PostgreSQL reste accessible par sa connexion privée ; `ipAllowList: []`

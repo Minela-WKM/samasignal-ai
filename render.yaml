@@ -27,8 +27,6 @@ services:
         fromDatabase: {name: sma-signalement, property: user}
       - key: POSTGRES_PASSWORD
         fromDatabase: {name: sma-signalement, property: password}
-      - key: PUBLIC_API_HOST
-        fromService: {name: samasignal-api, type: web, envVarKey: RENDER_EXTERNAL_HOSTNAME}
       - key: AI_MODE
         value: disabled
       - key: GEMMA_MODEL
@@ -48,7 +46,8 @@ services:
       - key: API_SCHEME
         value: https
       - key: API_HOST
-        fromService: {name: samasignal-api, type: web, envVarKey: PUBLIC_API_HOST}
+        # Référence directe : Render refuse les chaînes de variables référencées.
+        fromService: {name: samasignal-api, type: web, envVarKey: RENDER_EXTERNAL_HOSTNAME}
 databases:
   - name: sma-signalement
     # Nom SQL généré pour une nouvelle base ; nom existant conservé sinon.
