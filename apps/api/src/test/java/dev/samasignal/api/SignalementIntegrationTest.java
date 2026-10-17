@@ -109,6 +109,23 @@ class SignalementIntegrationTest {
                                 .content(confirmation().replace("Grand Yoff", "Plateau")))
                 .andExpect(status().isConflict());
         assertThat(repository.count()).isEqualTo(1);
+        mvc.perform(delete("/api/v2/signalements/" + id)).andExpect(status().isConflict());
+        mvc.perform(post("/api/v2/signalements/" + id + "/traiter"))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/v2/signalements/" + id)).andExpect(status().isConflict());
+        mvc.perform(post("/api/v2/signalements/" + id + "/confirmer")
+                        .contentType("application/json").content(confirmation()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("TRAITE"));
+        assertThat(repository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void suppressionBrouillonSansPhotoIdempotente() throws Exception {
+        String id = analyser();
+        mvc.perform(delete("/api/v2/signalements/" + id)).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/v2/signalements/" + id)).andExpect(status().isNoContent());
+        assertThat(repository.count()).isZero();
     }
 
     @Test
@@ -200,6 +217,11 @@ class SignalementIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("image/png"))
                 .andExpect(content().bytes(image));
+        String id = mapper.readTree(reponse).get("id").asText();
+        mvc.perform(delete("/api/v2/signalements/" + id)).andExpect(status().isNoContent());
+        mvc.perform(get(url)).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/v2/signalements/" + id)).andExpect(status().isNoContent());
+        assertThat(repository.count()).isZero();
     }
 
     @Test

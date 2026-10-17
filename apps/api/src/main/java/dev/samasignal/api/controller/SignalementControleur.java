@@ -75,6 +75,13 @@ public class SignalementControleur {
         return service.lister(urgence, categorie);
     }
 
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Supprimer un brouillon et sa photo avant réédition")
+    public void supprimerBrouillon(@PathVariable UUID id) {
+        service.supprimerBrouillon(id);
+    }
+
     @PostMapping("/{id}/traiter")
     @Operation(summary = "Marquer un signalement confirmé comme traité")
     public SignalementDto traiter(@PathVariable UUID id) {

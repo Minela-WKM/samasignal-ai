@@ -8,6 +8,7 @@ export async function request(path, { signal, timeoutMs = 15000, ...options } = 
   const timer = setTimeout(() => { timedOut = true; controller.abort() }, timeoutMs)
   try {
     const response = await fetch(path, { ...options, signal: controller.signal })
+    if (response.status === 204) return null
     let body
     try { body = await response.json() } catch {
       if (response.ok) throw Object.assign(new Error('Réponse JSON invalide du serveur.'), { code: 'INVALID_RESPONSE' })
@@ -29,6 +30,7 @@ export async function request(path, { signal, timeoutMs = 15000, ...options } = 
 }
 export const getHealth = (signal) => request('/actuator/health', { signal })
 export const reportsApi = {
+  discard: (id, signal) => request(`/api/v2/signalements/${encodeURIComponent(id)}`, { method: 'DELETE', signal }),
   analyze: async (formData, signal) => assertReport(await request('/api/v2/signalements/analyser', {
     method: 'POST', body: formData, signal, timeoutMs: 35000,
   }), 'EN_ATTENTE'),

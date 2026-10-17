@@ -1,6 +1,53 @@
 import { test, expect } from '@playwright/test'
 import { mockApi, stubTiles, records, draft, enterCorrection, completeCorrection } from './fixtures.js'
 
+test('editing reclaims the draft before reanalysis and preserves input on deletion failure', async ({ page }) => {
+  await mockApi(page)
+  let deleted = false, deletions = 0, analyses = 0
+  await page.route('**/api/v2/signalements/analyser', async route => {
+    analyses++
+    if (analyses > 1) expect(deleted).toBe(true)
+    expect(route.request().postDataBuffer().toString()).toContain('name="photo"')
+    await route.fulfill({ status: 201, json: draft })
+  })
+  await page.route(`**/api/v2/signalements/${draft.id}`, async route => {
+    expect(route.request().method()).toBe('DELETE')
+    deletions++
+    if (deletions === 1) return route.fulfill({ status: 503, json: { message: 'Suppression indisponible' } })
+    deleted = true
+    await route.fulfill({ status: 204 })
+  })
+  await page.goto('/')
+  await page.getByLabel('Ajouter une photo').setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: Buffer.from('photo') })
+  await enterCorrection(page)
+  await page.getByRole('button', { name: 'Modifier le signalement' }).click()
+  await expect(page.getByRole('alert')).toContainText('Suppression indisponible')
+  await expect(page.getByRole('heading', { name: 'Vérifiez la fiche proposée' })).toBeVisible()
+  expect(analyses).toBe(1)
+  await page.getByRole('button', { name: 'Modifier le signalement' }).click()
+  await expect(page.getByLabel('Que se passe-t-il ?')).toHaveValue('Des déchets encombrent le trottoir près du marché de Médina.')
+  await expect(page.getByAltText('Aperçu de la photo jointe au signalement')).toBeVisible()
+  await page.getByLabel('Que se passe-t-il ?').fill('Description corrigée')
+  await page.getByRole('button', { name: 'Analyser mon signalement' }).click()
+  await expect(page.getByRole('heading', { name: 'Vérifiez la fiche proposée' })).toBeVisible()
+  expect(analyses).toBe(2)
+})
+
+test('lost confirmation response can be retried after the report is treated', async ({ page }) => {
+  await mockApi(page)
+  let calls = 0
+  await page.route('**/api/v2/signalements/*/confirmer', async route => {
+    if (++calls === 1) return route.abort('failed')
+    await route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'TRAITE', champsManquants: [] } })
+  })
+  await page.goto('/'); await enterCorrection(page); await completeCorrection(page)
+  await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Signalement confirmé', exact: true })).toBeVisible()
+  expect(calls).toBe(2)
+})
+
 test('citizen journey with photo, human correction and real confirmation response', async ({ page }) => {
   await mockApi(page)
   let analyzed = false, confirmations = 0

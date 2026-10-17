@@ -1,9 +1,29 @@
 import { afterEach, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { getHealth, reportsApi, request } from '../src/lib/api.js'
+import { demoReports } from '../src/fixtures/demoReports.js'
 
 const originalFetch = globalThis.fetch
 afterEach(() => { globalThis.fetch = originalFetch })
+
+test('confirmation accepts treated retries but rejects drafts, incomplete reports and wrong IDs', async () => {
+  const report = { ...demoReports[0], statut: 'TRAITE', champsManquants: [] }
+  globalThis.fetch = async () => Response.json(report)
+  assert.equal((await reportsApi.confirm(report.id, {})).statut, 'TRAITE')
+  for (const change of [{ statut: 'EN_ATTENTE' }, { latitude: null }, { localisationDeclaree: '' }, { champsManquants: ['latitude'] }, { id: 'other' }]) {
+    globalThis.fetch = async () => Response.json({ ...report, ...change })
+    await assert.rejects(reportsApi.confirm(report.id, {}), { code: 'INVALID_RESPONSE' })
+  }
+})
+
+test('discard accepts an empty successful response', async () => {
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, '/api/v2/signalements/123')
+    assert.equal(options.method, 'DELETE')
+    return new Response(null, { status: 204 })
+  }
+  assert.equal(await reportsApi.discard('123'), null)
+})
 
 test('health checks the real API response', async () => {
   globalThis.fetch = async (url) => {

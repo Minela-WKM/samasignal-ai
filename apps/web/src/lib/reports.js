@@ -27,7 +27,7 @@ export function assertReport(value, expectedStatus) {
     !(value.localisationDeclaree === null || typeof value.localisationDeclaree === 'string') ||
     !Object.hasOwn(categories, value.categorie) || !Object.hasOwn(urgencies, value.niveauUrgence) ||
     !['EN_ATTENTE', 'CONFIRME', 'TRAITE'].includes(value.statut) ||
-    (expectedStatus && value.statut !== expectedStatus) ||
+    (expectedStatus && !(expectedStatus === 'CONFIRME' ? ['CONFIRME', 'TRAITE'].includes(value.statut) : value.statut === expectedStatus)) ||
     !Number.isFinite(value.scoreConfiance) || value.scoreConfiance < 0 || value.scoreConfiance > 1 ||
     !Array.isArray(value.champsManquants) || !value.champsManquants.every(s => typeof s === 'string') ||
     !Array.isArray(value.elementsVisuelsDetectes) || !value.elementsVisuelsDetectes.every(s => typeof s === 'string') ||

@@ -77,6 +77,7 @@ async function analyze() {
   finally { busy.value = false }
 }
 async function review() {
+  if (busy.value) return
   geoVersion++; geoBusy.value = false
   errors.value = validateConfirmation(values.value)
   message.value = Object.keys(errors.value).length ? 'Complétez les champs avant de continuer.' : ''
@@ -123,7 +124,20 @@ async function reset() {
   choosePhoto(null); text.value = ''; report.value = null; confirmed.value = null; errors.value = {}; message.value = ''; geoMessage.value = ''; geoVersion++; geoBusy.value = false
   await changeStep(1)
 }
-async function editDescription() { report.value = null; errors.value = {}; message.value = ''; geoVersion++; geoBusy.value = false; await changeStep(1) }
+async function editDescription() {
+  if (busy.value) return
+  busy.value = true
+  message.value = ''
+  controller = new AbortController()
+  geoVersion++; geoBusy.value = false
+  try {
+    await reportsApi.discard(report.value.id, controller.signal)
+    report.value = null
+    errors.value = {}
+    await changeStep(1)
+  } catch (error) { if (error.code !== 'ABORTED') await showError(error) }
+  finally { busy.value = false }
+}
 onBeforeUnmount(() => { controller?.abort(); geoVersion++; if (preview.value) URL.revokeObjectURL(preview.value) })
 </script>
 
@@ -139,7 +153,7 @@ onBeforeUnmount(() => { controller?.abort(); geoVersion++; if (preview.value) UR
         <p class="font-bold">{{ message }}</p>
         <ul v-if="Object.values(errors).some(Boolean)" class="mt-2 list-disc pl-5"><template v-for="(error, key) in errors" :key="key"><li v-if="error"><a :href="`#${key}`">{{ labels[key] }} : {{ error }}</a></li></template></ul>
       </div>
-      <p class="sr-only" role="status">{{ busy ? (step === 1 ? 'Analyse en cours. Merci de patienter.' : 'Confirmation en cours.') : '' }}</p>
+      <p class="sr-only" role="status">{{ busy ? (step === 1 ? 'Analyse en cours. Merci de patienter.' : step === 2 ? 'Suppression du brouillon en cours.' : 'Confirmation en cours.') : '' }}</p>
 
       <form v-if="step === 1" novalidate @submit.prevent="analyze">
         <fieldset :disabled="busy">
@@ -183,7 +197,7 @@ onBeforeUnmount(() => { controller?.abort(); geoVersion++; if (preview.value) UR
         <button type="button" class="btn btn-small mt-3" :disabled="geoBusy" @click="locate">{{ geoBusy ? 'Recherche de la position…' : 'Utiliser ma position' }}</button>
         <p role="status" class="hint mt-2">{{ geoMessage }}</p>
         <div class="two-fields"><div v-for="key in ['latitude', 'longitude']" :key="key" class="field"><label :for="key">{{ labels[key] }}</label><input :id="key" v-model="values[key]" type="number" step="any" :min="key === 'latitude' ? -90 : -180" :max="key === 'latitude' ? 90 : 180" :aria-invalid="!!errors[key]" :aria-describedby="`${key}-error`" @input="geoVersion++; geoBusy = false" /><p :id="`${key}-error`" class="field-error">{{ errors[key] }}</p></div></div>
-        <div class="actions"><button type="submit" class="btn btn-primary">Vérifier avant confirmation</button><button type="button" class="btn" @click="editDescription">Modifier le signalement</button></div>
+        <div class="actions"><button type="submit" class="btn btn-primary" :disabled="busy">Vérifier avant confirmation</button><button type="button" class="btn" :disabled="busy" @click="editDescription">Modifier le signalement</button></div>
       </form>
 
       <div v-else-if="step === 3">

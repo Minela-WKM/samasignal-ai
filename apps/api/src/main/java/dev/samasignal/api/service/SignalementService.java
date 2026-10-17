@@ -23,4 +23,6 @@ public interface SignalementService {
     List<SignalementDto> lister(NiveauUrgence urgence, Categorie categorie);
 
     SignalementDto traiter(UUID id);
+
+    void supprimerBrouillon(UUID id);
 }

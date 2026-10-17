@@ -110,6 +110,24 @@ public class SignalementServiceImpl implements SignalementService {
         return mapper.versDto(signalement);
     }
 
+    @Override
+    @Transactional
+    public void supprimerBrouillon(UUID id) {
+        var brouillon = repository.rechercherPourModification(id);
+        if (brouillon.isEmpty()) return;
+        Signalement signalement = brouillon.get();
+        if (signalement.getStatut() != StatutSignalement.EN_ATTENTE)
+            throw new ExceptionMetier(
+                    HttpStatus.CONFLICT,
+                    "SIGNALEMENT_DEJA_CONFIRME",
+                    "Un signalement confirmé ne peut plus être supprimé.");
+        repository.delete(signalement);
+        if (signalement.getPhotoUrl() != null) {
+            String photoId = signalement.getPhotoUrl().substring("/api/v2/photos/".length());
+            photos.deleteById(UUID.fromString(photoId));
+        }
+    }
+
     private Signalement charger(UUID id) {
         return repository
                 .rechercherPourModification(id)
