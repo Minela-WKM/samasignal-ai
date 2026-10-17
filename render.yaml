@@ -1,11 +1,11 @@
-# Préparation uniquement : lancer le Blueprint après fusion et CI verte sur main.
+# Les services héritent de la branche choisie à la création du Blueprint.
+# Tester avec feature/render-deployment ; basculer vers main après revue et CI verte.
 services:
   - type: web
     name: samasignal-api
     runtime: docker
     plan: free
     region: frankfurt
-    branch: main
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: ./apps/api
     healthCheckPath: /actuator/health
@@ -38,7 +38,6 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-    branch: main
     dockerfilePath: ./apps/web/Dockerfile
     dockerContext: ./apps/web
     healthCheckPath: /healthz
@@ -52,7 +51,8 @@ services:
         fromService: {name: samasignal-api, type: web, envVarKey: PUBLIC_API_HOST}
 databases:
   - name: sma-signalement
-    databaseName: "sma signalement"
+    # Nom SQL généré pour une nouvelle base ; nom existant conservé sinon.
+    # L'API récupère le nom effectif via fromDatabase.
     postgresMajorVersion: "17"
     plan: free
     region: frankfurt
