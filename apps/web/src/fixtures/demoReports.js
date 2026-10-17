@@ -8,5 +8,5 @@ export const demoReports = [
 ].map(([id, categorie, resume, localisationDeclaree, niveauUrgence, latitude, longitude, scoreConfiance], i) => ({
   id: `demo-${id}`, texteBrut: resume, photoUrl: null, categorie, resume, localisationDeclaree,
   niveauUrgence, latitude, longitude, scoreConfiance, champsManquants: [], elementsVisuelsDetectes: [],
-  statut: 'CONFIRME', createdAt: `2026-10-16T0${9 - i}:00:00Z`,
+  statut: 'CONFIRME', dateCreation: `2026-10-16T0${9 - i}:00:00Z`,
 }))

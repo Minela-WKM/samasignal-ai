@@ -1,0 +1,60 @@
+# Préparation uniquement : lancer le Blueprint après fusion et CI verte sur main.
+services:
+  - type: web
+    name: samasignal-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: render
+      - key: PORT
+        value: "10000"
+      - key: JAVA_TOOL_OPTIONS
+        value: "-XX:MaxRAMPercentage=65.0 -XX:+UseSerialGC -Xss512k"
+      - key: POSTGRES_HOST
+        fromDatabase: {name: sma-signalement, property: host}
+      - key: POSTGRES_PORT
+        fromDatabase: {name: sma-signalement, property: port}
+      - key: POSTGRES_DB
+        fromDatabase: {name: sma-signalement, property: database}
+      - key: POSTGRES_USER
+        fromDatabase: {name: sma-signalement, property: user}
+      - key: POSTGRES_PASSWORD
+        fromDatabase: {name: sma-signalement, property: password}
+      - key: PUBLIC_API_HOST
+        fromService: {name: samasignal-api, type: web, envVarKey: RENDER_EXTERNAL_HOSTNAME}
+      - key: AI_MODE
+        value: disabled
+      - key: GEMMA_MODEL
+        value: gemma-4-26b-a4b-it
+
+  - type: web
+    name: samasignal-web
+    env: static
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: "cd apps/web && npm ci && npm run build"
+    publishPath: ./apps/web/dist
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: VITE_API_URL
+        fromService: {name: samasignal-api, type: web, envVarKey: RENDER_EXTERNAL_URL}
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  - name: sma-signalement
+    databaseName: sma_signalement
+    postgresMajorVersion: "17"
+    plan: free
+    region: frankfurt
+    ipAllowList: []

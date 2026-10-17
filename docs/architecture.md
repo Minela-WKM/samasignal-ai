@@ -1,73 +1,48 @@
-# Architecture du socle et cible MVP
+# Architecture SamaSignal
 
-## Socle livré
+Le navigateur appelle Spring Boot via le proxy Vite en développement et nginx dans Docker.
+L'API écoute sur 8081 et expose ses routes métier sous `/api/v2`.
 
-Le navigateur charge Vue 3/Vite/Tailwind. En développement Vite relaie les appels vers
-Spring Boot sur 8081 ; dans Docker, nginx sert le build et fait le même proxy. Le backend
-embarque Web, Validation, JPA, Actuator et springdoc-openapi. Il utilise H2 en mémoire par
-défaut et PostgreSQL avec le profil `docker`.
+## Couches backend
 
-Le frontend propose un parcours citoyen complet et une supervision conservés avec `KeepAlive`.
-Il appelle les routes du contrat, mais le backend de cette branche reste un socle sans routes
-métier. Swagger décrit le backend réel ; `openapi.yaml` reste le contrat cible inchangé.
+`controller` → `service` → `repository` → PostgreSQL.
+Les entités sont dans `entity`, les DTO dans `dto` et les conversions dans `mapper`.
+Les erreurs HTTP passent par `GestionnaireExceptions`. Swagger décrit les routes exécutables.
 
-Le choix Spring Boot est fondé sur la vélocité de Dev B, responsable du backend.
-JDK 21, Spring Boot 3.5 et Maven Wrapper sont la base commune ; le frontend utilise Node 24.
+1. `POST /api/v2/signalements/analyser` valide texte, coordonnées et photo avant l'appel IA.
+2. `ExtractionIaService` appelle Gemma avec texte et image éventuelle, puis valide `ExtractionIaDto`.
+3. `JournalExtractionService` conserve chaque tentative dans une transaction indépendante.
+4. Le service persiste le brouillon et sa photo atomiquement, avec statut `EN_ATTENTE`.
+5. `POST /api/v2/signalements/{id}/confirmer` applique les corrections validées et passe à `CONFIRME`.
+6. `GET /api/v2/signalements` retourne uniquement les fiches confirmées et traitées, filtrées par urgence/catégorie.
+7. `POST /api/v2/signalements/{id}/traiter` clôt le suivi ; une fiche en attente est refusée.
 
-## Flux MVP frontend et intégration backend
+## Persistance
 
-1. Le citoyen saisit du texte et éventuellement une photo ; il peut déjà choisir un point.
-2. `/analyze` valide les entrées, appelle Gemma et valide sa réponse, puis crée `EN_ATTENTE`.
-3. Le citoyen corrige la fiche, complète le lieu et sélectionne les coordonnées.
-4. `/{id}/confirm` vérifie les champs et passe la fiche à `CONFIRME`.
-5. `/reports` expose seulement les fiches `CONFIRME`/`TRAITE`, filtrées et ordonnées.
+PostgreSQL est utilisé en local et dans Docker. Flyway crée le schéma et Hibernate le valide.
+Les photos sont stockées en `bytea` dans la même base ; le volume PostgreSQL assure leur persistance.
+Les collections de champs manquants et d'éléments visuels utilisent des tables séparées ordonnées.
+La confirmation utilise un verrou de ligne et reste idempotente pour des valeurs identiques.
+H2 en mode PostgreSQL est réservé aux tests ; une recette sur PostgreSQL reste nécessaire.
 
-La sortie IA reste un `ExtractionResult` à sept champs. Les réponses HTTP sont des
-`ReportResponse` plats ; les coordonnées, identifiant, statut et dates appartiennent au système.
-Le client frontend centralise ses appels dans `src/lib/api.js` : délais 35 s (analyse) et
-15 s (liste/confirmation), annulation et validation des réponses. Aucun POST n'est réessayé
-automatiquement. Le brouillon reste en mémoire uniquement, sans localStorage.
+## Fournisseur IA
 
-## Repli dashboard adopté le 16 octobre
+Variables serveur : `GEMINI_API_KEY`, `GEMMA_MODEL`, `AI_MODE=hosted`.
+Le mode `disabled` retourne une indisponibilité explicite, sans extraction simulée.
+L'adaptateur utilise le protocole REST officiel Google `generateContent`, avec délai maximal de 30 secondes.
+Il valide le JSON contre les contraintes du DTO et journalise les erreurs sans créer de brouillon.
+La localisation et les coordonnées ne sont jamais inventées ; les champs manquants métier sont recalculés.
+La validation réelle du modèle avec clé fournisseur et photo doit être effectuée avant la démonstration.
 
-Avant tout chargement réel réussi, un échec réseau, timeout, 404 ou 5xx de la liste affiche
-cinq fixtures synthétiques avec un bandeau permanent et un bouton Réessayer. Une liste vide,
-une réponse invalide ou 401/403 ne déclenche pas ce repli. Après succès réel, les données réelles
-sont conservées lors d'une panne et signalées comme potentiellement obsolètes. Une confirmation
-citoyenne récente empêche également le repli fictif. Les sources ne sont jamais mélangées.
-Analyse et confirmation restent réelles.
+## Périmètre
 
-Les marqueurs partagent les filtres du tableau ; un incident sans coordonnées reste consultable
-sans marqueur. Les popups utilisent des nœuds texte sûrs. Un fond OSM indisponible n'empêche pas
-la saisie des coordonnées au clavier ni la consultation des informations textuelles.
+L'accès est public, conformément au cahier des charges : aucune authentification ni rôle municipal.
+Les journaux IA ne sont pas exposés par l'API. Le frontend métier et SamaA11y sont intégrés dans cette branche.
 
-## Persistance à ajouter par Dev B
+## Intégration et Render
 
-- `IncidentReport` : champs du contrat, texte brut, référence photo, coordonnées et statut.
-- `AIExtractionLog` : modèle, réponse brute, latence et succès/erreur, avec lien éventuel à l'incident.
-- Migrations versionnées avant les premières entités ; ne pas activer `ddl-auto=update` en Docker.
-- Photos contrôlées (JPEG/PNG/WebP, 5 Mo max), nom généré, volume `/app/uploads`.
-  Ne pas accepter de téléchargement distant arbitraire à partir d'une URL fournie par le client.
-- PostgreSQL et photos persistent dans des volumes distincts. H2 est volontairement éphémère.
-
-Les logs IA ne sont pas publics et ne doivent contenir ni clé ni données de démonstration privées.
-Les dix fixtures de J2 sont synthétiques et chargées explicitement, jamais silencieusement.
-
-## Intégration IA à valider
-
-`GEMINI_API_KEY`, `GEMMA_MODEL` et `AI_MODE` sont réservés au futur adaptateur.
-Le socle accepte ces variables dans Compose mais ne les consomme pas encore.
-Le mode courant est `disabled`. Dev B devra implémenter les modes explicites `live` et `demo`.
-Une erreur en mode réel ne déclenche jamais une simulation cachée.
-
-Tester Gemma hébergé avec texte + image dès J1. Utiliser un schéma de sortie explicite si
-supporté, puis une validation serveur systématique. Si le fournisseur refuse le schéma,
-demander un JSON strict dans le prompt et valider le même DTO ; ne pas accepter un JSON invalide.
-Timeout cible : 30 secondes. Renvoyer une erreur exploitable et conserver la saisie côté UI.
-L'IA ne choisit pas les coordonnées, ne valide pas elle-même une fiche et ne décide pas des règles serveur.
-
-## Limites du MVP
-
-Pas de login, d'autorisation mairie, de géocodage automatique ni d'endpoint de passage à `TRAITE`.
-La carte est centrée sur Dakar ; les coordonnées restent une saisie humaine vérifiée.
-SamaA11y est indépendant du pipeline IA et n'ajoute aucun écran.
+Le frontend utilise les adresses `/api/v2/signalements`, `dateCreation` et `erreursChamps` du backend.
+La gestion des délais et des annulations du frontend est conservée.
+Nginx génère sa configuration au démarrage à partir de `PORT`, `API_SCHEME` et `API_HOST`.
+Compose conserve `http://api:8081` ; Render utilise l’hôte HTTPS public de l’API.
+Le profil Spring `render` reçoit les propriétés de la base gérée, sans URL ou secret versionné.

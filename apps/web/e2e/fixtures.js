@@ -7,9 +7,9 @@ export async function stubTiles(page) {
 }
 export async function mockApi(page) {
   await stubTiles(page)
-  await page.route('**/api/reports', route => route.fulfill({ json: records }))
-  await page.route('**/api/reports/analyze', route => route.fulfill({ status: 201, json: draft }))
-  await page.route('**/api/reports/*/confirm', route => route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'CONFIRME', champsManquants: [] } }))
+  await page.route('**/api/v2/signalements', route => route.fulfill({ json: records }))
+  await page.route('**/api/v2/signalements/analyser', route => route.fulfill({ status: 201, json: draft }))
+  await page.route('**/api/v2/signalements/*/confirmer', route => route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'CONFIRME', champsManquants: [] } }))
 }
 export async function enterCorrection(page) {
   await page.getByLabel('Que se passe-t-il ?').fill('Des déchets encombrent le trottoir près du marché de Médina.')

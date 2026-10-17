@@ -5,10 +5,13 @@ spring:
     name: samasignal-api
   profiles:
     default: local
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
   servlet:
     multipart:
       max-file-size: 5MB
@@ -22,6 +25,18 @@ management:
     health:
       show-details: never
 springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
   swagger-ui:
+    enabled: true
+    operations-sorter: alpha
+    tags-sorter: alpha
     path: /swagger-ui.html
     disable-swagger-default-url: true
+
+samasignal:
+  ia:
+    cle: ${GEMINI_API_KEY:}
+    modele: ${GEMMA_MODEL:gemma-4-26b-a4b-it}
+    mode: ${AI_MODE:disabled}

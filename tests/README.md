@@ -19,3 +19,5 @@ Gemma réel est une recette séparée, jamais un secret requis pour les PR de co
 SamaA11y audite saisie, correction et dashboard en CI. Les tests navigateur vérifient les
 contrastes calculés des badges (>= 7:1), le format 320 px et un contenu agrandi à 200 %.
 La recette avec lecteur d'écran et la chaîne avec IA réelle restent des contrôles distincts.
+
+La recette de publication Render est décrite dans `docs/deploiement-render.md`.

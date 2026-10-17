@@ -97,6 +97,23 @@ jobs:
           curl --fail http://localhost:8081/actuator/health | grep 'UP'
           curl --fail http://localhost:8080/actuator/health | grep 'UP'
           curl --fail http://localhost:8080/swagger-ui/index.html > /dev/null
+      - name: Verify frontend proxy and PostgreSQL response format
+        run: |
+          docker compose exec -T db sh -c 'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' < docs/donnees-demo.sql
+          curl --fail 'http://localhost:8080/api/v2/signalements?urgence=haute&categorie=dechet' > /tmp/samasignal-reports.json
+          python3 - <<'PYTHON'
+          import json
+          from datetime import datetime
+          with open('/tmp/samasignal-reports.json') as source:
+              reports = json.load(source)
+          assert len(reports) == 1, reports
+          report = reports[0]
+          assert report['categorie'] == 'dechet' and report['niveauUrgence'] == 'haute'
+          assert report['statut'] == 'CONFIRME' and report['champsManquants'] == []
+          assert isinstance(report['elementsVisuelsDetectes'], list)
+          datetime.fromisoformat(report['dateCreation'].replace('Z', '+00:00'))
+          PYTHON
+          curl --fail --location http://localhost:8080/swagger-ui.html > /dev/null
       - if: failure()
         run: docker compose logs --no-color
       - if: always()

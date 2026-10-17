@@ -1,16 +1,63 @@
 import { test, expect } from '@playwright/test'
 import { mockApi, stubTiles, records, draft, enterCorrection, completeCorrection } from './fixtures.js'
 
+test('editing reclaims the draft before reanalysis and preserves input on deletion failure', async ({ page }) => {
+  await mockApi(page)
+  let deleted = false, deletions = 0, analyses = 0
+  await page.route('**/api/v2/signalements/analyser', async route => {
+    analyses++
+    if (analyses > 1) expect(deleted).toBe(true)
+    expect(route.request().postDataBuffer().toString()).toContain('name="photo"')
+    await route.fulfill({ status: 201, json: draft })
+  })
+  await page.route(`**/api/v2/signalements/${draft.id}`, async route => {
+    expect(route.request().method()).toBe('DELETE')
+    deletions++
+    if (deletions === 1) return route.fulfill({ status: 503, json: { message: 'Suppression indisponible' } })
+    deleted = true
+    await route.fulfill({ status: 204 })
+  })
+  await page.goto('/')
+  await page.getByLabel('Ajouter une photo').setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: Buffer.from('photo') })
+  await enterCorrection(page)
+  await page.getByRole('button', { name: 'Modifier le signalement' }).click()
+  await expect(page.getByRole('alert')).toContainText('Suppression indisponible')
+  await expect(page.getByRole('heading', { name: 'Vérifiez la fiche proposée' })).toBeVisible()
+  expect(analyses).toBe(1)
+  await page.getByRole('button', { name: 'Modifier le signalement' }).click()
+  await expect(page.getByLabel('Que se passe-t-il ?')).toHaveValue('Des déchets encombrent le trottoir près du marché de Médina.')
+  await expect(page.getByAltText('Aperçu de la photo jointe au signalement')).toBeVisible()
+  await page.getByLabel('Que se passe-t-il ?').fill('Description corrigée')
+  await page.getByRole('button', { name: 'Analyser mon signalement' }).click()
+  await expect(page.getByRole('heading', { name: 'Vérifiez la fiche proposée' })).toBeVisible()
+  expect(analyses).toBe(2)
+})
+
+test('lost confirmation response can be retried after the report is treated', async ({ page }) => {
+  await mockApi(page)
+  let calls = 0
+  await page.route('**/api/v2/signalements/*/confirmer', async route => {
+    if (++calls === 1) return route.abort('failed')
+    await route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'TRAITE', champsManquants: [] } })
+  })
+  await page.goto('/'); await enterCorrection(page); await completeCorrection(page)
+  await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Signalement confirmé', exact: true })).toBeVisible()
+  expect(calls).toBe(2)
+})
+
 test('citizen journey with photo, human correction and real confirmation response', async ({ page }) => {
   await mockApi(page)
   let analyzed = false, confirmations = 0
-  await page.route('**/api/reports/analyze', async route => {
+  await page.route('**/api/v2/signalements/analyser', async route => {
     const body = route.request().postDataBuffer().toString()
     expect(body).toContain('name="texteBrut"'); expect(body).toContain('name="photo"')
     analyzed = true
     await route.fulfill({ status: 201, json: draft })
   })
-  await page.route('**/api/reports/*/confirm', async route => {
+  await page.route('**/api/v2/signalements/*/confirmer', async route => {
     confirmations++
     const body = route.request().postDataJSON()
     expect(Object.keys(body).sort()).toEqual(['categorie', 'resume', 'localisationDeclaree', 'niveauUrgence', 'latitude', 'longitude'].sort())
@@ -46,7 +93,7 @@ test('view switches preserve draft, filters and move focus to the new title', as
 
 test('five demo records on unavailable API, filters synchronize table and map, then real recovery', async ({ page }) => {
   await stubTiles(page)
-  await page.route('**/api/reports', route => route.fulfill({ status: 503, json: { message: 'Indisponible' } }))
+  await page.route('**/api/v2/signalements', route => route.fulfill({ status: 503, json: { message: 'Indisponible' } }))
   await page.goto('/'); await page.getByRole('button', { name: 'Supervision Mairie', exact: true }).click()
   await expect(page.getByText('Mode démonstration — données fictives, API indisponible', { exact: true })).toBeVisible()
   await expect(page.locator('tbody tr')).toHaveCount(5)
@@ -56,7 +103,7 @@ test('five demo records on unavailable API, filters synchronize table and map, t
   await page.getByRole('button', { name: /Localiser sur la carte/ }).first().click()
   await expect(page.getByRole('region', { name: 'Carte interactive des signalements citoyens à Dakar' })).toBeFocused()
   await expect(page.locator('.leaflet-popup-content')).toContainText('Urgence : CRITIQUE')
-  await page.route('**/api/reports', route => route.fulfill({ json: [] }))
+  await page.route('**/api/v2/signalements', route => route.fulfill({ json: [] }))
   await page.getByRole('button', { name: 'Réessayer l’API' }).click()
   await expect(page.getByText('Mode démonstration', { exact: false })).toHaveCount(0)
   await expect(page.getByText('Aucun signalement ne correspond à cette sélection.')).toBeVisible()
@@ -64,21 +111,21 @@ test('five demo records on unavailable API, filters synchronize table and map, t
 
 test('401 and malformed responses never produce synthetic data', async ({ page }) => {
   await stubTiles(page)
-  await page.route('**/api/reports', route => route.fulfill({ status: 401, json: { message: 'Accès refusé' } }))
+  await page.route('**/api/v2/signalements', route => route.fulfill({ status: 401, json: { message: 'Accès refusé' } }))
   await page.goto('/'); await page.getByRole('button', { name: 'Supervision Mairie', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Accès refusé')
   await expect(page.getByText('Mode démonstration', { exact: false })).toHaveCount(0)
-  await page.route('**/api/reports', route => route.fulfill({ json: { wrong: [] } }))
+  await page.route('**/api/v2/signalements', route => route.fulfill({ json: { wrong: [] } }))
   await page.getByRole('button', { name: 'Actualiser les signalements' }).click()
   await expect(page.getByRole('alert')).toContainText('invalide')
   await expect(page.locator('.map-pin')).toHaveCount(0)
 })
 
 test('outage after real data keeps the real records, not fixtures', async ({ page }) => {
-  await mockApi(page); await page.route('**/api/reports', route => route.fulfill({ json: [records[0]] }))
+  await mockApi(page); await page.route('**/api/v2/signalements', route => route.fulfill({ json: [records[0]] }))
   await page.goto('/'); await page.getByRole('button', { name: 'Supervision Mairie', exact: true }).click()
   await expect(page.locator('tbody tr')).toHaveCount(1)
-  await page.route('**/api/reports', route => route.abort('failed'))
+  await page.route('**/api/v2/signalements', route => route.abort('failed'))
   await page.getByRole('button', { name: 'Actualiser les signalements' }).click()
   await expect(page.getByRole('alert')).toContainText('obsolètes')
   await expect(page.locator('tbody tr')).toHaveCount(1)
@@ -88,7 +135,7 @@ test('outage after real data keeps the real records, not fixtures', async ({ pag
 test('missing coordinates stay in the table and HTML in a popup remains plain text', async ({ page }) => {
   await mockApi(page)
   const html = '<img src=x onerror=alert(1)>'
-  await page.route('**/api/reports', route => route.fulfill({ json: [{ ...records[0], resume: html }, { ...records[1], latitude: null }] }))
+  await page.route('**/api/v2/signalements', route => route.fulfill({ json: [{ ...records[0], resume: html }, { ...records[1], latitude: null }] }))
   await page.goto('/'); await page.getByRole('button', { name: 'Supervision Mairie', exact: true }).click()
   await expect(page.locator('tbody tr')).toHaveCount(2); await expect(page.locator('.map-pin')).toHaveCount(1)
   await expect(page.getByText('Position indisponible')).toBeVisible()
@@ -113,7 +160,7 @@ test('pending analysis blocks duplicates; a failure preserves the input', async 
   await mockApi(page)
   let calls = 0, release
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/reports/analyze', async route => { calls++; await gate; await route.fulfill({ status: 504, json: { code: 'AI_TIMEOUT', message: 'Analyse trop longue' } }) })
+  await page.route('**/api/v2/signalements/analyser', async route => { calls++; await gate; await route.fulfill({ status: 504, json: { code: 'IA_DELAI_DEPASSE', message: 'Analyse trop longue' } }) })
   await page.goto('/')
   await page.getByLabel('Que se passe-t-il ?').fill('Un lampadaire éteint')
   await page.getByRole('button', { name: 'Analyser mon signalement' }).click()
@@ -126,14 +173,14 @@ test('pending analysis blocks duplicates; a failure preserves the input', async 
 
 test('confirmation errors remain editable and refresh failure cannot undo success', async ({ page }) => {
   await mockApi(page)
-  await page.route('**/api/reports/*/confirm', route => route.fulfill({ status: 400, json: { message: 'Lieu à préciser', fieldErrors: { localisationDeclaree: 'Ajoutez une rue.' } } }))
+  await page.route('**/api/v2/signalements/*/confirmer', route => route.fulfill({ status: 400, json: { message: 'Lieu à préciser', erreursChamps: { localisationDeclaree: 'Ajoutez une rue.' } } }))
   await page.goto('/'); await enterCorrection(page); await completeCorrection(page)
   await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
   await expect(page.getByLabel('Lieu du signalement', { exact: true })).toHaveAttribute('aria-invalid', 'true')
-  await page.route('**/api/reports/*/confirm', route => route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'CONFIRME', champsManquants: [] } }))
+  await page.route('**/api/v2/signalements/*/confirmer', route => route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'CONFIRME', champsManquants: [] } }))
   await completeCorrection(page)
   await page.getByRole('button', { name: 'Confirmer le signalement', exact: true }).click()
-  await page.route('**/api/reports', route => route.fulfill({ status: 503, json: {} }))
+  await page.route('**/api/v2/signalements', route => route.fulfill({ status: 503, json: {} }))
   await page.getByRole('button', { name: 'Voir dans la supervision' }).click()
   await expect(page.getByRole('alert')).toContainText('Votre confirmation reste enregistrée')
   await expect(page.getByText('Mode démonstration', { exact: false })).toHaveCount(0)
@@ -174,7 +221,7 @@ test('client deadline preserves draft and does not automatically retry analysis'
   await page.clock.install()
   let calls = 0, release
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/reports/analyze', async route => { calls++; await gate; await route.fulfill({ status: 201, json: draft }).catch(() => {}) })
+  await page.route('**/api/v2/signalements/analyser', async route => { calls++; await gate; await route.fulfill({ status: 201, json: draft }).catch(() => {}) })
   await page.goto('/')
   await page.getByLabel('Que se passe-t-il ?').fill('Un problème de voirie')
   await page.getByRole('button', { name: 'Analyser mon signalement' }).click()
@@ -189,7 +236,7 @@ test('pending confirmation cannot be submitted twice', async ({ page }) => {
   await mockApi(page)
   let calls = 0, release
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/reports/*/confirm', async route => {
+  await page.route('**/api/v2/signalements/*/confirmer', async route => {
     calls++; await gate
     await route.fulfill({ json: { ...draft, ...route.request().postDataJSON(), statut: 'CONFIRME', champsManquants: [] } })
   })

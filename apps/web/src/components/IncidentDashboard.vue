@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, watch } from 'vue'
 import { reportsApi } from '../lib/api.js'
 import { categories, urgencies, filterReports, hasPosition, canUseDemo } from '../lib/reports.js'

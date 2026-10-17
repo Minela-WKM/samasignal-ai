@@ -1,4 +1,4 @@
-﻿import { assertReport, assertReportList } from './reports.js'
+import { assertReport, assertReportList } from './reports.js'
 export async function request(path, { signal, timeoutMs = 15000, ...options } = {}) {
   const controller = new AbortController()
   let timedOut = false
@@ -7,14 +7,16 @@ export async function request(path, { signal, timeoutMs = 15000, ...options } = 
   else signal?.addEventListener('abort', abort, { once: true })
   const timer = setTimeout(() => { timedOut = true; controller.abort() }, timeoutMs)
   try {
-    const response = await fetch(path, { ...options, signal: controller.signal })
+    const baseUrl = import.meta.env?.VITE_API_URL || ''
+    const response = await fetch(baseUrl + path, { ...options, signal: controller.signal })
+    if (response.status === 204) return null
     let body
     try { body = await response.json() } catch {
       if (response.ok) throw Object.assign(new Error('Réponse JSON invalide du serveur.'), { code: 'INVALID_RESPONSE' })
     }
     if (!response.ok) throw Object.assign(new Error(body?.message || `Le service a répondu ${response.status}.`), {
       status: response.status, code: body?.code || 'HTTP_ERROR',
-      fieldErrors: body?.fieldErrors && typeof body.fieldErrors === 'object' ? body.fieldErrors : {},
+      fieldErrors: body?.erreursChamps && typeof body.erreursChamps === 'object' ? body.erreursChamps : {},
     })
     return body
   } catch (error) {
@@ -29,11 +31,12 @@ export async function request(path, { signal, timeoutMs = 15000, ...options } = 
 }
 export const getHealth = (signal) => request('/actuator/health', { signal })
 export const reportsApi = {
-  analyze: async (formData, signal) => assertReport(await request('/api/reports/analyze', {
+  discard: (id, signal) => request(`/api/v2/signalements/${encodeURIComponent(id)}`, { method: 'DELETE', signal }),
+  analyze: async (formData, signal) => assertReport(await request('/api/v2/signalements/analyser', {
     method: 'POST', body: formData, signal, timeoutMs: 35000,
   }), 'EN_ATTENTE'),
   confirm: async (id, corrections, signal) => {
-    const report = assertReport(await request(`/api/reports/${encodeURIComponent(id)}/confirm`, {
+    const report = assertReport(await request(`/api/v2/signalements/${encodeURIComponent(id)}/confirmer`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corrections), signal,
     }), 'CONFIRME')
     if (report.id !== id) throw Object.assign(new Error('La confirmation concerne une autre fiche.'), { code: 'INVALID_RESPONSE' })
@@ -41,6 +44,6 @@ export const reportsApi = {
   },
   list: async (filters = {}, signal) => {
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value))
-    return assertReportList(await request(`/api/reports${query.size ? `?${query}` : ''}`, { signal }))
+    return assertReportList(await request(`/api/v2/signalements${query.size ? `?${query}` : ''}`, { signal }))
   },
 }
